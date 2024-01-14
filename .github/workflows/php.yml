@@ -1,39 +1,36 @@
-name: PHP Composer
+name: Get Data
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
-permissions:
-  contents: read
+on: 
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v3
-
-    - name: Validate composer.json and composer.lock
-      run: composer validate --strict
-
-    - name: Cache Composer packages
-      id: composer-cache
-      uses: actions/cache@v3
+    - name: Checkout
+      uses: actions/checkout@master
+    - name: Run Script #Api调用
+      run: | 
+        php loliconapi.php
+    - name: Make index
+      run: | 
+        printf "[" > index.json
+        ls ./data|while read data
+        do
+        printf "\"$data\"," >>index.json
+        done
+        sed -i 's/.$//' index.json
+        echo "]" >>index.json
+        
+    - name: Commit #上传新的json到仓库
+      run: |
+        git config --global user.email AutoupdateRobot@email.com
+        git config --global user.name AutoupdateRobot
+        git add .
+        git commit -m "update json" -a
+    - name: Push changes
+      uses: ad-m/github-push-action@master
       with:
-        path: vendor
-        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-php-
-
-    - name: Install dependencies
-      run: composer install --prefer-dist --no-progress
-
-    # Add a test script to composer.json, for instance: "test": "vendor/bin/phpunit"
-    # Docs: https://getcomposer.org/doc/articles/scripts.md
-
-    # - name: Run test suite
-    #   run: composer run-script test
+        github_token: ${{ secrets.GITHUB_TOKEN }}
